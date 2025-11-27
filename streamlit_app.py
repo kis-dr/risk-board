@@ -133,8 +133,7 @@ st.markdown("""
     }
     
     /* st.data_editor의 선택 열 헤더 이모티콘 제거 (숨기기) */
-    /* data-testid="stWidgetLabel" 안에 있는 span 태그 중 이모티콘 역할을 하는 첫 번째 span을 숨김 */
-    .st-emotion-cache-1wv939k > span:first-child { /* 이 클래스는 Streamlit 버전에 따라 변경될 수 있으나, 현재 구조를 기반으로 선택 */
+    .st-emotion-cache-1wv939k > span:first-child { 
         display: none !important;
     }
 
@@ -321,6 +320,119 @@ RCI_map = {"KRCI": "국내 리스크 종합지수", "GRCI": "글로벌 리스크
 RCI_IMJ_map = {"KRCI": 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f1f0-1f1f7.svg',
                "GRCI": 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f30f.svg'}
 
+# [NEW] Fragment를 사용하여 차트 및 테이블 상호작용만 부분 리로딩 (스크롤 튐 방지)
+@st.fragment
+def risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, default_start, default_end):
+    desc_placeholder = st.empty()
+    chart_placeholder = st.empty()
+    slider_placeholder = st.empty()
+
+    # [State 관리] 현재 선택된 인덱스 (디폴트: 마지막 행)
+    ss_key = f"selected_idx_{name}"
+    if ss_key not in st.session_state:
+        st.session_state[ss_key] = len(df_table) - 1
+
+    # 데이터 준비: '선택' 컬럼 추가 및 초기화
+    df_table["선택"] = False
+    current_idx = st.session_state[ss_key]
+    # 인덱스 유효성 체크
+    if current_idx >= len(df_table):
+        current_idx = len(df_table) - 1
+        st.session_state[ss_key] = current_idx
+    
+    df_table.at[current_idx, "선택"] = True
+    
+    # 컬럼 순서 변경: '선택'을 맨 앞으로
+    cols = ["선택"] + [c for c in df_table.columns if c != "선택"]
+    df_table = df_table[cols]
+
+    # Config: 체크박스 설정 및 다른 컬럼 수정 불가 처리
+    column_config = {
+        # 선택 열 너비 최소화
+        "선택": st.column_config.CheckboxColumn(
+            "선택",
+            width="small", 
+            default=False
+        )
+    }
+    disabled_cols = [c for c in df_table.columns if c != "선택"]
+
+    # Data Editor 표시
+    edited_df = st.data_editor(
+        df_table,
+        column_config=column_config,
+        disabled=disabled_cols,
+        hide_index=True,
+        use_container_width=True,
+        key=f"editor_{name}"
+    )
+
+    # 변경 감지 및 단일 선택 로직
+    selected_rows = edited_df[edited_df["선택"] == True].index.tolist()
+    
+    new_selection = current_idx
+    
+    if len(selected_rows) == 0:
+        # 다 해제됨 -> 강제로 이전 선택 유지 (Rerun으로 복구)
+        st.session_state[ss_key] = current_idx
+        st.rerun()
+    elif len(selected_rows) > 1:
+        # 2개 이상 선택됨 -> 새로 체크된 것을 찾음
+        for idx in selected_rows:
+            if idx != current_idx:
+                new_selection = idx
+                break
+        st.session_state[ss_key] = new_selection
+        st.rerun()
+    else:
+        # 1개만 선택됨 (정상)
+        if selected_rows[0] != current_idx:
+            st.session_state[ss_key] = selected_rows[0]
+            st.rerun()
+    
+    # 차트 및 설명 업데이트 (현재 선택된 target_col 기준)
+    target_col = df_table.iloc[current_idx]["지표"] 
+    
+    target_desc = ""
+    target_interpret = ""
+    
+    if target_col in tooltip_data:
+        target_desc = tooltip_data[target_col]['desc']
+        target_interpret = tooltip_data[target_col]['interpretation']
+
+    if target_desc:
+        desc_placeholder.info(f"**{target_col}**: {target_desc} \n\n {target_interpret}", icon="💡")
+
+    if target_col in risk_df.columns:
+        chart_base = risk_df
+    else:
+        chart_base = econ_df
+
+    with slider_placeholder.container():
+        range_key = f"{name}_range_{target_col}" 
+        start_date, end_date = st.slider(
+            "조회 기간",
+            min_value=min_date,
+            max_value=max_date,
+            value=(default_start, default_end),
+            format="YYYY-MM-DD",
+            key=range_key,
+            label_visibility="collapsed"
+        )
+
+    chart_df = chart_base[
+        (chart_base["Date"] >= start_date) & 
+        (chart_base["Date"] <= end_date)
+    ][["Date", target_col]]
+
+    chart = alt.Chart(chart_df).mark_line(color="grey").encode(
+        x=alt.X("Date:T", title=None, axis=alt.Axis(format="%Y-%m")),
+        y=alt.Y(f"{target_col}:Q", scale=alt.Scale(zero=False), title=None),
+        tooltip=["Date", alt.Tooltip(target_col, format=".2f")]
+    ).properties(height=200)
+
+    chart_placeholder.altair_chart(chart, use_container_width=True)
+
 def main():
     st.write("")
     st.title("우체국보험 리스크 스코어보드")
@@ -487,116 +599,9 @@ def main():
                 styler = df_table.style.format({'지표': format_tooltip_html}).applymap(color_change, subset=["변화"])
                 st.markdown(styler.hide(axis="index").set_table_attributes('class="custom-table"').to_html(escape=False), unsafe_allow_html=True)
             else:
-                # 대체투자 아님: st.data_editor 사용 (선택 기능 포함)
-                desc_placeholder = st.empty()
-                chart_placeholder = st.empty()
-                slider_placeholder = st.empty()
-
-                # [State 관리] 현재 선택된 인덱스 (디폴트: 마지막 행)
-                ss_key = f"selected_idx_{name}"
-                if ss_key not in st.session_state:
-                    st.session_state[ss_key] = len(df_table) - 1
-
-                # 데이터 준비: '선택' 컬럼 추가 및 초기화
-                df_table["선택"] = False
-                current_idx = st.session_state[ss_key]
-                # 인덱스 유효성 체크
-                if current_idx >= len(df_table):
-                    current_idx = len(df_table) - 1
-                    st.session_state[ss_key] = current_idx
-                
-                df_table.at[current_idx, "선택"] = True
-                
-                # 컬럼 순서 변경: '선택'을 맨 앞으로
-                cols = ["선택"] + [c for c in df_table.columns if c != "선택"]
-                df_table = df_table[cols]
-
-                # Config: 체크박스 설정 및 다른 컬럼 수정 불가 처리
-                column_config = {
-                    # 선택 열 너비 최소화
-                    "선택": st.column_config.CheckboxColumn(
-                        "선택",
-                        width="small", 
-                        default=False
-                    )
-                }
-                disabled_cols = [c for c in df_table.columns if c != "선택"]
-
-                # Data Editor 표시
-                edited_df = st.data_editor(
-                    df_table,
-                    column_config=column_config,
-                    disabled=disabled_cols,
-                    hide_index=True,
-                    use_container_width=True,
-                    key=f"editor_{name}"
-                )
-
-                # 변경 감지 및 단일 선택 로직
-                selected_rows = edited_df[edited_df["선택"] == True].index.tolist()
-                
-                new_selection = current_idx
-                
-                if len(selected_rows) == 0:
-                    # 다 해제됨 -> 강제로 이전 선택 유지 (Rerun으로 복구)
-                    st.session_state[ss_key] = current_idx
-                    st.rerun()
-                elif len(selected_rows) > 1:
-                    # 2개 이상 선택됨 -> 새로 체크된 것을 찾음
-                    for idx in selected_rows:
-                        if idx != current_idx:
-                            new_selection = idx
-                            break
-                    st.session_state[ss_key] = new_selection
-                    st.rerun()
-                else:
-                    # 1개만 선택됨 (정상)
-                    if selected_rows[0] != current_idx:
-                        st.session_state[ss_key] = selected_rows[0]
-                        st.rerun()
-                
-                # 차트 및 설명 업데이트 (현재 선택된 target_col 기준)
-                target_col = df_table.iloc[current_idx]["지표"] 
-                
-                target_desc = ""
-                target_interpret = ""
-                
-                if target_col in tooltip_data:
-                    target_desc = tooltip_data[target_col]['desc']
-                    target_interpret = tooltip_data[target_col]['interpretation']
-
-                if target_desc:
-                    desc_placeholder.info(f"**{target_col}**: {target_desc} \n\n {target_interpret}", icon="💡")
-
-                if target_col in risk_df.columns:
-                    chart_base = risk_df
-                else:
-                    chart_base = econ_df
-
-                with slider_placeholder.container():
-                    range_key = f"{name}_range_{target_col}" 
-                    start_date, end_date = st.slider(
-                        "조회 기간",
-                        min_value=min_date,
-                        max_value=max_date,
-                        value=(default_start, default_end),
-                        format="YYYY-MM-DD",
-                        key=range_key,
-                        label_visibility="collapsed"
-                    )
-
-                chart_df = chart_base[
-                    (chart_base["Date"] >= start_date) & 
-                    (chart_base["Date"] <= end_date)
-                ][["Date", target_col]]
-
-                chart = alt.Chart(chart_df).mark_line(color="grey").encode(
-                    x=alt.X("Date:T", title=None, axis=alt.Axis(format="%Y-%m")),
-                    y=alt.Y(f"{target_col}:Q", scale=alt.Scale(zero=False), title=None),
-                    tooltip=["Date", alt.Tooltip(target_col, format=".2f")]
-                ).properties(height=200)
-
-                chart_placeholder.altair_chart(chart, use_container_width=True)
+                # [수정] 차트, 슬라이더, 에디터 영역을 별도의 Fragment 함수 호출로 변경
+                # 이 함수 안에서 발생하는 st.rerun()은 이 Fragment 영역만 새로고침 하므로 스크롤이 튀지 않습니다.
+                risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, default_start, default_end)
 
     st.subheader("종합 리스크지표", divider="grey")
     col1, col2 = st.columns(2, gap="large")
