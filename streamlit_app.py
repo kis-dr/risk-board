@@ -132,15 +132,52 @@ st.markdown("""
         margin-bottom: -15px;
     }
     
-    /* st.data_editor의 선택 열 헤더 이모티콘 제거 (숨기기) */
-    .st-emotion-cache-1wv939k > span:first-child { 
-        display: none !important;
-    }
-
 </style>
 """, unsafe_allow_html=True)
 
-rename_dict = {
+
+
+
+def fit_hmm_posterior(series: pd.Series, n_states: int = 3, random_state: int = 100):
+    s = series.dropna()
+    X = (s.values.reshape(-1, 1).astype(float) * 100.0)
+    idx = s.index
+
+    model = GaussianHMM(n_components=n_states, covariance_type="diag", random_state=random_state, n_iter=200, tol=1e-6, init_params="stmcw")
+    model.fit(X)
+
+    _, post = model.score_samples(X) 
+    means = model.means_.flatten()
+    order = np.argsort(means)
+    label_map = {order[0]: "Low", order[1]: "Mid", order[2]: "High"}
+
+    post_df = pd.DataFrame(post, index=idx, columns=[f"st{k}" for k in range(n_states)])
+    post_df = post_df.rename(columns={f"st{k}": label_map[k] for k in range(n_states)})
+    post_df = post_df[["Low","Mid","High"]]
+
+    states = model.predict(X)
+    state_labels = pd.Series([label_map[s] for s in states], index=idx, name="state")
+
+    return post_df, state_labels
+
+def run_and_export(risk_df: pd.DataFrame, target_col: str, random_state: int = 100):
+    s = risk_df[target_col].astype(float)
+    post, state_labels = fit_hmm_posterior(s, n_states=3, random_state=random_state)
+
+    out = risk_df.copy()
+    out = out.join(post, how="left")
+    out.insert(0, "state", state_labels)
+    out = out.reset_index().rename(columns={"Date": "Date"})
+    # Keep only necessary state info to return
+    out = out[["Date", target_col, "state", "Low", "Mid", "High"]]
+    out.columns = ["Date", target_col, target_col+"_state", target_col+"_Low", target_col+"_Mid", target_col+"_High"]
+    return out
+
+
+@st.cache_data
+
+def load_and_preprocess_data():
+    rename_dict = {
     'Date.1': 'Date',
     '시티 매크로 리스크 지수': 'Citi 매크로 리스크',
     '국고채장단기금리차(10Y-3Y).1': '국고채 장단기금리차(10Y-3Y)',
@@ -184,10 +221,10 @@ rename_dict = {
     '뉴욕 공실률.1': '오피스 공실률 (뉴욕)',
     '샌프란시스코 공실률.1': '오피스 공실률 (샌프란시스코)',
     '파리 오피스 공실률': '오피스 공실률 (파리)',
-    '런던 오피스 공실률': '오피스 공실률 (런던)',
-    '베를린 오피스 공실률': '오피스 공실률 (베를린)',
-    '마드리드 오피스 공실률': '오피스 공실률 (마드리드)',
-    '멜버른 오피스 공실률': '오피스 공실률 (멜버른)',
+    '런던 오피스 공실률.1': '오피스 공실률 (런던)',
+    '베를린 오피스 공실률.1': '오피스 공실률 (베를린)',
+    '마드리드 오피스 공실률.1': '오피스 공실률 (마드리드)',
+    '멜버른 오피스 공실률.1': '오피스 공실률 (멜버른)',
     'Fed Delinquency rate on loians secured by RE all commercial banks': '미국 부동산담보대출 연체율',
     '미국 모기지 금리(30년).1': '미국 모기지 금리(30년)',
     'S&P Case-Shiller 주택가격 지수.1': '미국 주택가격 지수',
@@ -196,47 +233,7 @@ rename_dict = {
     '원달러환율.1': '원달러 환율',
     '국내 경기선행지수 순환변동치': '국내 경기선행지수 순환변동치_절대수치',
     '국내 경기선행지수 순환변동치.1': '국내 경기선행지수 순환변동치'
-}
-
-
-def fit_hmm_posterior(series: pd.Series, n_states: int = 3, random_state: int = 100):
-    s = series.dropna()
-    X = (s.values.reshape(-1, 1).astype(float) * 100.0)
-    idx = s.index
-
-    model = GaussianHMM(n_components=n_states, covariance_type="diag", random_state=random_state, n_iter=200, tol=1e-6, init_params="stmcw")
-    model.fit(X)
-
-    _, post = model.score_samples(X) 
-    means = model.means_.flatten()
-    order = np.argsort(means)
-    label_map = {order[0]: "Low", order[1]: "Mid", order[2]: "High"}
-
-    post_df = pd.DataFrame(post, index=idx, columns=[f"st{k}" for k in range(n_states)])
-    post_df = post_df.rename(columns={f"st{k}": label_map[k] for k in range(n_states)})
-    post_df = post_df[["Low","Mid","High"]]
-
-    states = model.predict(X)
-    state_labels = pd.Series([label_map[s] for s in states], index=idx, name="state")
-
-    return post_df, state_labels
-
-def run_and_export(risk_df: pd.DataFrame, target_col: str, random_state: int = 100):
-    s = risk_df[target_col].astype(float)
-    post, state_labels = fit_hmm_posterior(s, n_states=3, random_state=random_state)
-
-    out = risk_df.copy()
-    out = out.join(post, how="left")
-    out.insert(0, "state", state_labels)
-    out = out.reset_index().rename(columns={"Date": "Date"})
-    # Keep only necessary state info to return
-    out = out[["Date", target_col, "state", "Low", "Mid", "High"]]
-    out.columns = ["Date", target_col, target_col+"_state", target_col+"_Low", target_col+"_Mid", target_col+"_High"]
-    return out
-
-
-@st.cache_data
-def load_and_preprocess_data():
+    }
     df = pd.read_csv('data/리스크보드New_v5_rawdata.csv', usecols=list(rename_dict.keys()))
     df = df[pd.to_datetime(df['Date.1']) < datetime.today() - timedelta(days=1)]
     
@@ -295,6 +292,15 @@ def color_change(val):
     elif '▽' in str(val): return 'color: #1976D2; font-weight: bold;'
     else: return 'color: #9E9E9E'
 
+# [NEW] 0.8 초과 값 강조를 위한 스타일 함수
+def highlight_threshold(val):
+    try:
+        if isinstance(val, (int, float)) and val > 0.8:
+            return 'color: #D32F2F; font-weight: bold;'
+    except:
+        pass
+    return ''
+
 def bytes_csv(df: pd.DataFrame) -> bytes:
     return df.to_csv(index=False).encode("utf-8-sig")
 
@@ -313,14 +319,14 @@ fx_indicators = ['국내 수출증가율', '국내 CDS 프리미엄', '외환변
 fx_categories = ["외환R 요인", "외환R 요인", "외환R 요인", "외환R 요인", "합계"]
 cr_indicators = ['국내 CDS 프리미엄', '미국 하이일드 스프레드', '미 장단기금리차(10년-2년)', '글로벌 금융 스트레스(BofA)',"크레딧/유동성리스크"]
 cr_categories = ["크레딧/유동성R 요인", "크레딧/유동성R 요인", "크레딧/유동성R 요인", "크레딧/유동성R 요인", "합계"]
-ai_indicators = ['국내 기준금리', '유가(WTI 최근월물)', '건화물 운임지수(BDI)', '미국 상업용 부동산 공실률', '미국 상업용 부동산 공실률 (LA)', '미국 상업용 부동산 공실률 (보스턴)', '미국 상업용 부동산 공실률 (시카고)', '미국 상업용 부동산 공실률 (애틀랜타)', '오피스 공실률 (뉴욕)', '오피스 공실률 (샌프란시스코)', '오피스 공실률 (파리)', '런던 오피스 공실률', '베를린 오피스 공실률', '마드리드 오피스 공실률', '멜버른 오피스 공실률', '미국 부동산담보대출 연체율', '미국 모기지 금리(30년)', '미국 주택가격 지수']
+ai_indicators = ['국내 기준금리', '유가(WTI 최근월물)', '건화물 운임지수(BDI)', '미국 상업용 부동산 공실률', '미국 상업용 부동산 공실률 (LA)', '미국 상업용 부동산 공실률 (보스턴)', '미국 상업용 부동산 공실률 (시카고)', '미국 상업용 부동산 공실률 (애틀랜타)', '오피스 공실률 (뉴욕)', '오피스 공실률 (샌프란시스코)', '오피스 공실률 (파리)', '오피스 공실률 (런던)', '오피스 공실률 (베를린)', '오피스 공실률 (마드리드)', '오피스 공실률 (멜버른)', '미국 부동산담보대출 연체율', '미국 모기지 금리(30년)', '미국 주택가격 지수']
 ai_categories = ["국내 대체투자R 요인", "공통 요인", "공통 요인", "해외 대체투자R 요인"] + ["해외 대체투자R 요인"] * 14
 
 RCI_map = {"KRCI": "국내 리스크 종합지수", "GRCI": "글로벌 리스크 종합지수"}
 RCI_IMJ_map = {"KRCI": 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f1f0-1f1f7.svg',
                "GRCI": 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f30f.svg'}
 
-# [NEW] Fragment를 사용하여 차트 및 테이블 상호작용만 부분 리로딩 (스크롤 튐 방지)
+# [NEW] Fragment를 사용하여 차트 및 테이블 상호작용만 부분 리로딩
 @st.fragment
 def risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, default_start, default_end):
     desc_placeholder = st.empty()
@@ -329,68 +335,52 @@ def risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, 
 
     # [State 관리] 현재 선택된 인덱스 (디폴트: 마지막 행)
     ss_key = f"selected_idx_{name}"
+    
+    # 세션 상태 초기화 (첫 로드 시 마지막 행의 인덱스를 저장)
     if ss_key not in st.session_state:
-        st.session_state[ss_key] = len(df_table) - 1
+        st.session_state[ss_key] = len(df_table) - 1 # 마지막 행 인덱스
 
-    # 데이터 준비: '선택' 컬럼 추가 및 초기화
-    df_table["선택"] = False
     current_idx = st.session_state[ss_key]
+
+    # --- [핵심 로직] 선택된 행에 배경색을 입히는 함수 ---
+    def highlight_selected_row(row):
+        # 현재 선택된 인덱스(current_idx)와 이 행의 인덱스(row.name)가 같으면 배경색 적용
+        if row.name == current_idx:
+            return ['background-color: #e6f3ff'] * len(row) # 연한 파란색 배경
+        return [''] * len(row)
+
+    # --- Pandas Styler 적용 ---
+    styled_df = df_table.style.format({
+        "이전": "{:.2f}",
+        "현재": "{:.2f}"
+    }, na_rep="-")\
+    .map(highlight_threshold, subset=["이전", "현재"])\
+    .map(color_change, subset=["변화"])\
+    .apply(highlight_selected_row, axis=1)
+
+    # --- st.dataframe 렌더링 ---
+    # hide_index=True로 설정하여 불필요한 인덱스 열을 숨김
+    event = st.dataframe(
+        styled_df,
+        use_container_width=True,
+        hide_index=True, 
+        on_select="rerun",          # 클릭 시 리런
+        selection_mode="single-row", # 단일 선택
+        key=f"dataframe_{name}"
+    )
+
+    # --- 사용자 클릭 이벤트 처리 ---
+    if len(event.selection.rows) > 0:
+        new_idx = event.selection.rows[0]
+        if new_idx != st.session_state[ss_key]:
+            st.session_state[ss_key] = new_idx
+            st.rerun() # 색상 적용을 위해 리런
+
     # 인덱스 유효성 체크
     if current_idx >= len(df_table):
         current_idx = len(df_table) - 1
         st.session_state[ss_key] = current_idx
-    
-    df_table.at[current_idx, "선택"] = True
-    
-    # 컬럼 순서 변경: '선택'을 맨 앞으로
-    cols = ["선택"] + [c for c in df_table.columns if c != "선택"]
-    df_table = df_table[cols]
-
-    # Config: 체크박스 설정 및 다른 컬럼 수정 불가 처리
-    column_config = {
-        # 선택 열 너비 최소화
-        "선택": st.column_config.CheckboxColumn(
-            "선택",
-            width="small", 
-            default=False
-        )
-    }
-    disabled_cols = [c for c in df_table.columns if c != "선택"]
-
-    # Data Editor 표시
-    edited_df = st.data_editor(
-        df_table,
-        column_config=column_config,
-        disabled=disabled_cols,
-        hide_index=True,
-        use_container_width=True,
-        key=f"editor_{name}"
-    )
-
-    # 변경 감지 및 단일 선택 로직
-    selected_rows = edited_df[edited_df["선택"] == True].index.tolist()
-    
-    new_selection = current_idx
-    
-    if len(selected_rows) == 0:
-        # 다 해제됨 -> 강제로 이전 선택 유지 (Rerun으로 복구)
-        st.session_state[ss_key] = current_idx
-        st.rerun()
-    elif len(selected_rows) > 1:
-        # 2개 이상 선택됨 -> 새로 체크된 것을 찾음
-        for idx in selected_rows:
-            if idx != current_idx:
-                new_selection = idx
-                break
-        st.session_state[ss_key] = new_selection
-        st.rerun()
-    else:
-        # 1개만 선택됨 (정상)
-        if selected_rows[0] != current_idx:
-            st.session_state[ss_key] = selected_rows[0]
-            st.rerun()
-    
-    # 차트 및 설명 업데이트 (현재 선택된 target_col 기준)
+            
     target_col = df_table.iloc[current_idx]["지표"] 
     
     target_desc = ""
@@ -536,11 +526,12 @@ def main():
 
         current_vals = [current_econ.get(col, np.nan) for col in indicators]
         previous_vals = [previous_econ.get(col, np.nan) for col in indicators]
+        
         table_data = {
             "지표": indicators,
             "세부 리스크": categories,
-            "이전": [f"{p:.2f}" if not np.isnan(p) else "-" for p in previous_vals],
-            "현재": [f"{c:.2f}" if not np.isnan(c) else "-" for c in current_vals],
+            "이전": previous_vals,
+            "현재": current_vals,
             "변화": [get_change_symbol(c - p if not np.isnan(c) and not np.isnan(p) else np.nan) for c, p in zip(current_vals, previous_vals)],
         }
         df_table = pd.DataFrame(table_data)
@@ -595,14 +586,28 @@ def main():
                 st.divider()
 
             if is_alt:
-                # 대체투자리스크: 기존 스타일 유지 (선택 기능 없음)
-                styler = df_table.style.format({'지표': format_tooltip_html}).applymap(color_change, subset=["변화"])
+                # [핵심 수정 사항] 
+                # 1. 데이터 타입을 강제로 float으로 변환하여 highlight_threshold 등이 오작동하지 않게 함
+                df_table["이전"] = pd.to_numeric(df_table["이전"], errors='coerce')
+                df_table["현재"] = pd.to_numeric(df_table["현재"], errors='coerce')
+
+                # 2. 포맷팅을 문자열("{:.2f}")이 아닌 '함수(lambda)'로 직접 처리
+                # 이렇게 하면 Pandas 스타일러가 포맷을 무시하는 현상을 방지할 수 있습니다.
+                format_dict = {
+                    "이전": lambda x: f"{x:.2f}" if pd.notnull(x) else "-",
+                    "현재": lambda x: f"{x:.2f}" if pd.notnull(x) else "-",
+                    "지표": format_tooltip_html
+                }
+
+                # 3. .format()을 한번에 적용하여 체이닝 이슈 방지
+                styler = df_table.style\
+                    .format(format_dict, na_rep="-")\
+                    .map(color_change, subset=["변화"])\
+                    .map(highlight_threshold, subset=["이전", "현재"])
+                
                 st.markdown(styler.hide(axis="index").set_table_attributes('class="custom-table"').to_html(escape=False), unsafe_allow_html=True)
             else:
-                # [수정] 차트, 슬라이더, 에디터 영역을 별도의 Fragment 함수 호출로 변경
-                # 이 함수 안에서 발생하는 st.rerun()은 이 Fragment 영역만 새로고침 하므로 스크롤이 튀지 않습니다.
                 risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, default_start, default_end)
-
     st.subheader("종합 리스크지표", divider="grey")
     col1, col2 = st.columns(2, gap="large")
     with col1: RISK_SECTION("KRCI", k_indicators, k_categories)
@@ -631,8 +636,6 @@ def main():
     st.subheader("지표별 종합 비교 분석", divider="grey")
 
     # 비교할 지표 매핑
-    # KRCI -> 국내 리스크 종합지수 (KRCI)
-    # G_EQUITY -> 글로벌주식리스크
     comp_map = {
         "국내 리스크 종합지수 (KRCI)": "KRCI",
         "글로벌 리스크 종합지수 (GRCI)": "GRCI",
@@ -643,66 +646,51 @@ def main():
         "크레딧/유동성리스크": "CREDIT"
     }
     
-    # 영문 코드 -> 한글 이름으로의 역 매핑 딕셔너리 생성
-    # {"KRCI": "국내 리스크 종합지수 (KRCI)", "G_EQUITY": "글로벌주식리스크", ...}
     reverse_comp_map = {v: k for k, v in comp_map.items()}
 
     # 차트 컨트롤 UI
     with st.container(border=True):
-        # 다중 선택 박스
         selected_names = st.multiselect(
             "비교할 지표를 선택하세요",
             options=list(comp_map.keys()),
-            default=["국내 리스크 종합지수 (KRCI)", "글로벌 리스크 종합지수 (GRCI)"] # 기본 선택값
+            default=["국내 리스크 종합지수 (KRCI)", "글로벌 리스크 종합지수 (GRCI)"]
         )
         
         if selected_names:
-            # 선택된 컬럼명 매핑 (한글 이름 -> 영문 코드)
             selected_cols = [comp_map[name] for name in selected_names]
             
-            # 차트용 데이터 준비 (전체 기간)
             min_ts = risk_df["Date"].min()
             max_ts = risk_df["Date"].max()
             min_date = min_ts.to_pydatetime() if isinstance(min_ts, pd.Timestamp) else min_ts
             max_date = max_ts.to_pydatetime() if isinstance(max_ts, pd.Timestamp) else max_ts
 
-            # [수정] 차트가 그려질 공간을 먼저 확보 (위쪽)
             chart_placeholder = st.empty()
-
-            # [수정] 슬라이더 생성 (아래쪽)
 
             start_date, end_date = st.slider(
                 "조회 기간 설정",
                 min_value=min_date,
                 max_value=max_date,
-                # 'default_chart_years' 변수가 정의되어 있지 않으므로 3년으로 고정
                 value=(max(min_date, selected_date - timedelta(days=365*default_chart_years)), selected_date),
                 format="YYYY-MM-DD",
                 key="comp_chart_slider",
                 label_visibility="collapsed"
             )
             
-            # [수정] 슬라이더 값을 이용한 데이터 필터링 로직
             chart_data = risk_df[
                 (risk_df["Date"] >= start_date) & 
                 (risk_df["Date"] <= end_date)
             ][["Date"] + selected_cols]
             
             melted_df = chart_data.melt("Date", var_name="지표_코드", value_name="값")
-            
-            # 컬럼 이름이 '지표_코드'이므로, '지표' 컬럼을 새로 만들어 한글 이름으로 매핑
             melted_df['지표'] = melted_df['지표_코드'].map(reverse_comp_map)
             
-            # Altair 멀티라인 차트
             chart = alt.Chart(melted_df).mark_line().encode(
                 x=alt.X("Date:T", axis=alt.Axis(format="%Y-%m"), title=None),
                 y=alt.Y("값:Q", scale=alt.Scale(zero=False), title=None),
-                # 여기서 '지표:N'을 사용하여 한글 이름을 범례에 표시
                 color=alt.Color("지표:N", legend=alt.Legend(title="", orient="top")),
                 tooltip=["Date", "지표", alt.Tooltip("값", format=".2f")]
             ).properties(height=400)
             
-            # [수정] 확보해둔 공간에 차트 그리기
             chart_placeholder.altair_chart(chart, use_container_width=True)
             
         else:
