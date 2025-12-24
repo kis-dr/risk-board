@@ -186,7 +186,7 @@ def load_and_preprocess_data():
     '美주간경제인덱스(WEI).1': '美주간경제인덱스(WEI)',
     'ISM제조업지수.1': '미국 ISM제조업지수',
     'VIX Index.1': 'S&P500 기대변동성(VIX)',
-    'CBOE Put/Call Ratio(센티멘트).1': '글로벌경기선행지수',
+    # 'CBOE Put/Call Ratio(센티멘트).1': '글로벌경기선행지수',
     '시티 경기서프라이즈 지수.1': '미국 경기서프라이즈 지수',
     '미국 정책불확실성지수.1': '미국 정책불확실성 지수',
     '글로벌주식모멘텀.1': '글로벌주식모멘텀',
@@ -232,9 +232,12 @@ def load_and_preprocess_data():
     '글로벌 리스크종합지수.1': '글로벌 리스크종합지수',
     '원달러환율.1': '원달러 환율',
     '국내 경기선행지수 순환변동치': '국내 경기선행지수 순환변동치_절대수치',
-    '국내 경기선행지수 순환변동치.1': '국내 경기선행지수 순환변동치'
+    '국내 경기선행지수 순환변동치.1': '국내 경기선행지수 순환변동치',
+    '글로벌 경기선행지수' :  '글로벌경기선행지수_절대수치',
+    '글로벌 경기선행지수.1' :  '글로벌경기선행지수',
+    '코멘트' : '코멘트'
     }
-    df = pd.read_csv('data/리스크보드New_v5_rawdata.csv', usecols=list(rename_dict.keys()))
+    df = pd.read_csv('data/리스크보드New_v6_rawdata.csv', usecols=list(rename_dict.keys()))
     df = df[pd.to_datetime(df['Date.1']) < datetime.today() - timedelta(days=1)]
     
     composite = df[['Date.1', '국내주식', '해외주식', '채권지수 ', 'FX 지수 ', '크레딧 지수 ', '국내 리스크종합지수.1', '글로벌 리스크종합지수.1']]
@@ -274,7 +277,7 @@ def load_and_preprocess_data():
             risk_df[col] = pd.to_numeric(risk_df[col].astype(str).str.strip(), errors='coerce')
     
     for col in econ_df.columns:
-        if col != 'Date':
+        if col not in ['Date','코멘트']:
             econ_df[col] = pd.to_numeric(econ_df[col].astype(str).str.strip(), errors='coerce')
     
     return risk_df, econ_df
@@ -391,7 +394,8 @@ def risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, 
         target_interpret = tooltip_data[target_col]['interpretation']
 
     if target_desc:
-        desc_placeholder.info(f"**{target_col}**: {target_desc} \n\n {target_interpret}", icon="💡")
+        desc_placeholder.info(f"**{target_col}**: {target_desc} \n\n {target_interpret}", icon="ℹ️")
+
 
     if target_col in risk_df.columns:
         chart_base = risk_df
@@ -432,6 +436,7 @@ def main():
     available_dates = risk_df['Date'].dt.strftime('%Y-%m-%d').unique()
     default_chart_years = 10
     st.divider()
+
     st.write("")
   
     with st.sidebar:
@@ -482,7 +487,14 @@ def main():
     previous_month_econ = previous_data['month']['econ'] if previous_data['month'] else None
     previous_year_risk = previous_data['year']['risk'] if previous_data['year'] else None
     previous_year_econ = previous_data['year']['econ'] if previous_data['year'] else None
+    
 
+    st.subheader("코멘트", divider="grey")
+    desc_placeholder = st.empty()
+    desc_placeholder.info(current_econ['코멘트'], icon="📝")
+    st.write("")
+    st.write("")
+    
     if not previous_data['next']:
         st.warning("이전 데이터가 없습니다.")
         return
