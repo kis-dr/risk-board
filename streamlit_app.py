@@ -307,10 +307,10 @@ def load_and_preprocess_data():
     cols, cols_raw = list(rename_dict.keys()), list(raw_rename_dict.keys())
     try:
         df = pd.read_csv(path, encoding='utf-8', usecols=cols)
-        df_raw = pd.read_csv(path, encoding='utf-8', usecols=cols_raw)
+        df_raw = pd.read_csv(path, encoding='utf-8', usecols=cols_raw,thousands=',')
     except UnicodeDecodeError:
         df = pd.read_csv(path, encoding='euc-kr', usecols=cols)
-        df_raw = pd.read_csv(path, encoding='euc-kr', usecols=cols_raw)
+        df_raw = pd.read_csv(path, encoding='euc-kr', usecols=cols_raw,thousands=',')
 
     df = df[pd.to_datetime(df['Date.1']) < datetime.today() - timedelta(days=1)]
     df_raw = df_raw[pd.to_datetime(df_raw['Date']) < datetime.today() - timedelta(days=1)]
