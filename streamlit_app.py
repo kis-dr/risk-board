@@ -237,9 +237,22 @@ def load_and_preprocess_data():
     '글로벌 경기선행지수.1' :  '글로벌경기선행지수',
     '코멘트' : '코멘트'
     }
-    df = pd.read_csv('data/리스크보드New_v6_rawdata.csv', usecols=list(rename_dict.keys()))
+    # df = pd.read_csv('data/리스크보드New_v6_rawdata.csv', usecols=list(rename_dict.keys()))
+    path = 'data/리스크보드New_v6_rawdata.csv'
+    cols = list(rename_dict.keys())
+    try:
+        df = pd.read_csv(path, encoding='utf-8', usecols=cols)
+    except UnicodeDecodeError:
+        df = pd.read_csv(path, encoding='euc-kr', usecols=cols)
     df = df[pd.to_datetime(df['Date.1']) < datetime.today() - timedelta(days=1)]
-    
+    print(repr(df.loc[0, '코멘트']))
+    df['코멘트'] = (
+    df['코멘트']
+    .astype(str)
+    .str.replace('\r\n', '\n', regex=False)
+    .str.replace('\r', '\n', regex=False)
+    )
+
     composite = df[['Date.1', '국내주식', '해외주식', '채권지수 ', 'FX 지수 ', '크레딧 지수 ', '국내 리스크종합지수.1', '글로벌 리스크종합지수.1']]
     composite.columns = ['Date', 'K_EQUITY', 'G_EQUITY', 'FI', 'FX', 'CREDIT', 'KRCI', 'GRCI']
     
@@ -279,7 +292,7 @@ def load_and_preprocess_data():
     for col in econ_df.columns:
         if col not in ['Date','코멘트']:
             econ_df[col] = pd.to_numeric(econ_df[col].astype(str).str.strip(), errors='coerce')
-    
+
     return risk_df, econ_df
 
 def get_change_symbol(change):
@@ -491,7 +504,8 @@ def main():
 
     st.subheader("코멘트", divider="grey")
     desc_placeholder = st.empty()
-    desc_placeholder.info(current_econ['코멘트'], icon="📝")
+    desc_placeholder.info(current_econ['코멘트'].replace('\n', '  \n'), icon="📝")
+    # desc_placeholder.markdown(f"📝 {current_econ['코멘트'].replace('\n', '  \n')}")
     st.write("")
     st.write("")
     
