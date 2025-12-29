@@ -178,80 +178,142 @@ def run_and_export(risk_df: pd.DataFrame, target_col: str, random_state: int = 1
 
 def load_and_preprocess_data():
     rename_dict = {
-    'Date.1': 'Date',
-    '시티 매크로 리스크 지수': 'Citi 매크로 리스크',
-    '국고채장단기금리차(10Y-3Y).1': '국고채 장단기금리차(10Y-3Y)',
-    'VKOSPI.1': 'KOSPI200 기대변동성(VKOSPI)',
-    '외국인 순매수 혹은 지분율': '외국인 순매수(60일 누계)',
-    '美주간경제인덱스(WEI).1': '美주간경제인덱스(WEI)',
-    'ISM제조업지수.1': '미국 ISM제조업지수',
-    'VIX Index.1': 'S&P500 기대변동성(VIX)',
-    # 'CBOE Put/Call Ratio(센티멘트).1': '글로벌경기선행지수',
-    '시티 경기서프라이즈 지수.1': '미국 경기서프라이즈 지수',
-    '미국 정책불확실성지수.1': '미국 정책불확실성 지수',
-    '글로벌주식모멘텀.1': '글로벌주식모멘텀',
-    '국내주식': '국내주식리스크',
-    '해외주식': '글로벌주식리스크',
-    '국내 BEI Rate.1': '국내 BEI Rate',
-    'JPM EMBI Global Spread.1': '신흥국채권 스프레드(JPM EMBI)',
-    'MOVE.1': '채권 기대변동성(MOVE)',
-    '미국 기대물가(BEI 5년).1': '미국 기대인플레이션(5년)',
-    '미국채 10년물 금리.1': '미국채 10년물 금리',
-    '채권지수 ': '채권리스크',
-    '수출증가율 .1': '국내 수출증가율',
-    '한국 CDS 프리미엄.2': '국내 CDS 프리미엄',
-    '한국1Y-미국1Y 금리차.1': '한국1Y-미국1Y 금리차',
-    '외환변동성지수(JPM).1': '외환변동성지수(JPM)',
-    '달러인덱스(DXY).1': '달러인덱스(DXY)',
-    'FX 지수 ': '외환리스크',
-    'CD(91일).1': '국내 기준금리',
-    '한국 CDS 프리미엄.3': '국내 CDS 프리미엄',
-    '미국 하이일드 스프레드(OAS).1': '미국 하이일드 스프레드',
-    '장단기금리차(미국채 10년물-2년물).1': '미 장단기금리차(10년-2년)',
-    'BofA 메릴린치 글로벌 금융 스트레스.1': '글로벌 금융 스트레스(BofA)',
-    '크레딧 지수 ': '크레딧/유동성리스크',
-    '한국 기준금리.1': '국내 기준금리',
-    '유가(WTI 최근월물 CL1).1': '유가(WTI 최근월물)',
-    '글로벌 운임지수.1': '건화물 운임지수(BDI)',
-    '상업용 부동산 공실률(CRE Vacancy rate)-cbre.1': '미국 상업용 부동산 공실률',
-    '공실률 LA': '미국 상업용 부동산 공실률 (LA)',
-    '공실률 보스턴': '미국 상업용 부동산 공실률 (보스턴)',
-    '공실률 시카고': '미국 상업용 부동산 공실률 (시카고)',
-    '애틀랜타 공실률.1': '미국 상업용 부동산 공실률 (애틀랜타)',
-    '뉴욕 공실률.1': '오피스 공실률 (뉴욕)',
-    '샌프란시스코 공실률.1': '오피스 공실률 (샌프란시스코)',
-    '파리 오피스 공실률': '오피스 공실률 (파리)',
-    '런던 오피스 공실률.1': '오피스 공실률 (런던)',
-    '베를린 오피스 공실률.1': '오피스 공실률 (베를린)',
-    '마드리드 오피스 공실률.1': '오피스 공실률 (마드리드)',
-    '멜버른 오피스 공실률.1': '오피스 공실률 (멜버른)',
-    'Fed Delinquency rate on loians secured by RE all commercial banks': '미국 부동산담보대출 연체율',
-    '미국 모기지 금리(30년).1': '미국 모기지 금리(30년)',
-    'S&P Case-Shiller 주택가격 지수.1': '미국 주택가격 지수',
-    '국내 리스크종합지수.1': '국내 리스크종합지수',
-    '글로벌 리스크종합지수.1': '글로벌 리스크종합지수',
-    '원달러환율.1': '원달러 환율',
-    '국내 경기선행지수 순환변동치': '국내 경기선행지수 순환변동치_절대수치',
-    '국내 경기선행지수 순환변동치.1': '국내 경기선행지수 순환변동치',
-    '글로벌 경기선행지수' :  '글로벌경기선행지수_절대수치',
-    '글로벌 경기선행지수.1' :  '글로벌경기선행지수',
-    '코멘트' : '코멘트'
+        'Date.1': 'Date',
+        '시티 매크로 리스크 지수': 'Citi 매크로 리스크',
+        '국고채장단기금리차(10Y-3Y).1': '국고채 장단기금리차(10Y-3Y)',
+        'VKOSPI.1': 'KOSPI200 기대변동성(VKOSPI)',
+        '외국인 순매수 혹은 지분율': '외국인 순매수(60일 누계)',
+        '美주간경제인덱스(WEI).1': '美주간경제인덱스(WEI)',
+        'ISM제조업지수.1': '미국 ISM제조업지수',
+        'VIX Index.1': 'S&P500 기대변동성(VIX)',
+        # 'CBOE Put/Call Ratio(센티멘트).1': '글로벌경기선행지수',
+        '시티 경기서프라이즈 지수.1': '미국 경기서프라이즈 지수',
+        '미국 정책불확실성지수.1': '미국 정책불확실성 지수',
+        '글로벌주식모멘텀.1': '글로벌주식모멘텀',
+        '국내주식': '국내주식리스크',
+        '해외주식': '글로벌주식리스크',
+        '국내 BEI Rate.1': '국내 BEI Rate',
+        'JPM EMBI Global Spread.1': '신흥국채권 스프레드(JPM EMBI)',
+        'MOVE.1': '채권 기대변동성(MOVE)',
+        '미국 기대물가(BEI 5년).1': '미국 기대인플레이션(5년)',
+        '미국채 10년물 금리.1': '미국채 10년물 금리',
+        '채권지수 ': '채권리스크',
+        '수출증가율 .1': '국내 수출증가율',
+        # '한국 CDS 프리미엄.2': '국내 CDS 프리미엄',
+        '한국1Y-미국1Y 금리차.1': '한국1Y-미국1Y 금리차',
+        '외환변동성지수(JPM).1': '외환변동성지수(JPM)',
+        '달러인덱스(DXY).1': '달러인덱스(DXY)',
+        'FX 지수 ': '외환리스크',
+        'CD(91일).1': 'CD(91일)',
+        '한국 CDS 프리미엄.3': '국내 CDS 프리미엄',
+        '미국 하이일드 스프레드(OAS).1': '미국 하이일드 스프레드',
+        '장단기금리차(미국채 10년물-2년물).1': '미 장단기금리차(10년-2년)',
+        'BofA 메릴린치 글로벌 금융 스트레스.1': '글로벌 금융 스트레스(BofA)',
+        '크레딧 지수 ': '크레딧/유동성리스크',
+        '한국 기준금리.1': '국내 기준금리',
+        '유가(WTI 최근월물 CL1).1': '유가(WTI 최근월물)',
+        '글로벌 운임지수.1': '건화물 운임지수(BDI)',
+        '상업용 부동산 공실률(CRE Vacancy rate)-cbre.1': '미국 상업용 부동산 공실률',
+        '공실률 LA': '미국 상업용 부동산 공실률 (LA)',
+        '공실률 보스턴': '미국 상업용 부동산 공실률 (보스턴)',
+        '공실률 시카고': '미국 상업용 부동산 공실률 (시카고)',
+        '애틀랜타 공실률.1': '미국 상업용 부동산 공실률 (애틀랜타)',
+        '뉴욕 공실률.1': '오피스 공실률 (뉴욕)',
+        '샌프란시스코 공실률.1': '오피스 공실률 (샌프란시스코)',
+        '파리 오피스 공실률': '오피스 공실률 (파리)',
+        '런던 오피스 공실률.1': '오피스 공실률 (런던)',
+        '베를린 오피스 공실률.1': '오피스 공실률 (베를린)',
+        '마드리드 오피스 공실률.1': '오피스 공실률 (마드리드)',
+        '멜버른 오피스 공실률.1': '오피스 공실률 (멜버른)',
+        'Fed Delinquency rate on loians secured by RE all commercial banks': '미국 부동산담보대출 연체율',
+        '미국 모기지 금리(30년).1': '미국 모기지 금리(30년)',
+        'S&P Case-Shiller 주택가격 지수.1': '미국 주택가격 지수',
+        '국내 리스크종합지수.1': '국내 리스크종합지수',
+        '글로벌 리스크종합지수.1': '글로벌 리스크종합지수',
+        '원달러환율.1': '원달러 환율',
+        # '국내 경기선행지수 순환변동치': '국내 경기선행지수 순환변동치_절대수치',
+        '국내 경기선행지수 순환변동치.1': '국내 경기선행지수 순환변동치',
+        # '글로벌 경기선행지수' :  '글로벌경기선행지수_절대수치',
+        '글로벌 경기선행지수.1' :  '글로벌경기선행지수',
+        '코멘트' : '코멘트' 
+    }
+    raw_rename_dict = {
+            'Date': 'Date',
+        "Citi 매크로 리스크": "Citi 매크로 리스크",
+        "국고채장단기금리차(10Y-3Y)": "국고채 장단기금리차(10Y-3Y)",
+        "VKOSPI": "KOSPI200 기대변동성(VKOSPI)",
+        "외국인 순매수 60일 누계": "외국인 순매수(60일 누계)",
+        "美주간경제인덱스(WEI)": "美주간경제인덱스(WEI)",
+        "ISM제조업지수": "미국 ISM제조업지수",
+        "VIX Index": "S&P500 기대변동성(VIX)",
+        "CBOE Put/Call Ratio(센티멘트)": "CBOE Put/Call Ratio(센티멘트)",
+        "시티 경기서프라이즈 지수": "미국 경기서프라이즈 지수",
+        "미국 정책불확실성지수": "미국 정책불확실성 지수",
+        "글로벌주식모멘텀": "글로벌주식모멘텀",
+        "국내 BEI Rate": "국내 BEI Rate",
+        "JPM EMBI Global Spread": "신흥국채권 스프레드(JPM EMBI)",
+        "MOVE": "채권 기대변동성(MOVE)",
+        "미국 기대물가(BEI 5년)": "미국 기대인플레이션(5년)",
+        "미국채 10년물 금리": "미국채 10년물 금리",
+        "수출증가율 ": "국내 수출증가율",
+        "한국 CDS 프리미엄": "국내 CDS 프리미엄",
+        "한국1Y-미국1Y 금리차": "한국1Y-미국1Y 금리차",
+        "외환변동성지수(JPM)": "외환변동성지수(JPM)",
+        "달러인덱스(DXY)": "달러인덱스(DXY)",
+        "CD(91일)": "CD(91일)",
+        "미국 하이일드 스프레드(OAS)": "미국 하이일드 스프레드",
+        "장단기금리차(미국채 10년물-2년물)": "미 장단기금리차(10년-2년)",
+        "BofA 메릴린치 글로벌 금융 스트레스": "글로벌 금융 스트레스(BofA)",
+        "한국 기준금리": "국내 기준금리",
+        "유가(WTI 최근월물 CL1)": "유가(WTI 최근월물)",
+        "글로벌 운임지수": "건화물 운임지수(BDI)",
+        "상업용 부동산 공실률(CRE Vacancy rate)-cbre": "미국 상업용 부동산 공실률",
+        "LA 공실률": "미국 상업용 부동산 공실률 (LA)",
+        "보스턴 공실률": "미국 상업용 부동산 공실률 (보스턴)",
+        "시카고 공실률": "미국 상업용 부동산 공실률 (시카고)",
+        "애틀랜타 공실률": "미국 상업용 부동산 공실률 (애틀랜타)",
+        "뉴욕 공실률": "오피스 공실률 (뉴욕)",
+        "샌프란시스코 공실률": "오피스 공실률 (샌프란시스코)",
+        "파리 공실률": "오피스 공실률 (파리)",
+        "런던 오피스 공실률": "오피스 공실률 (런던)",
+        "베를린 오피스 공실률": "오피스 공실률 (베를린)",
+        "마드리드 오피스 공실률": "오피스 공실률 (마드리드)",
+        "멜버른 오피스 공실률": "오피스 공실률 (멜버른)",
+        "미국 부동산담보대출 연체율": "미국 부동산담보대출 연체율",
+        "미국 모기지 금리(30년)": "미국 모기지 금리(30년)",
+        # "S&P Case-Shiller 주택가격 지수": "S&P Case-Shiller 주택가격 지수",
+        # "KOSPI": "KOSPI",
+        # "MSCI ACWI": "MSCI ACWI",
+        # "MSCI선진국": "MSCI선진국",
+        # "MSCI신흥국": "MSCI신흥국",
+        # "KIS채권종합지수": "KIS채권종합지수",
+        # "블룸버그 GLOBAL AGG": "블룸버그 GLOBAL AGG",
+        # "블룸버그 GLOBAL AGG CREDIT": "블룸버그 GLOBAL AGG CREDIT",
+        # "블룸버그 GLOBAL AGG CORP": "블룸버그 GLOBAL AGG CORP",
+        # "국고채 3년물 금리": "국고채 3년물 금리",
+        # "미 국채 2년물 금리": "미 국채 2년물 금리",
+        # "FTSE NAREIT Equity REITS": "FTSE NAREIT Equity REITS",
+        # "상업용 부동산": "상업용 부동산",
+        # "DJ Brookfield Global Infrastructure Index": "DJ Brookfield Global Infrastructure Index",
+        # "CA US Private Equity": "CA US Private Equity",
+        # "FTSE Venture Capital Index": "FTSE Venture Capital Index",
+        "원달러환율": "원달러 환율",
+        # "Bloomberg US Treasury Index": "Bloomberg US Treasury Index",
+        "국내 경기선행지수 순환변동치" : '국내 경기선행지수 순환변동치',
+        "글로벌 경기선행지수" : '글로벌경기선행지수'
     }
     # df = pd.read_csv('data/리스크보드New_v6_rawdata.csv', usecols=list(rename_dict.keys()))
     path = 'data/리스크보드New_v6_rawdata.csv'
-    cols = list(rename_dict.keys())
+    cols, cols_raw = list(rename_dict.keys()), list(raw_rename_dict.keys())
     try:
         df = pd.read_csv(path, encoding='utf-8', usecols=cols)
+        df_raw = pd.read_csv(path, encoding='utf-8', usecols=cols_raw)
     except UnicodeDecodeError:
         df = pd.read_csv(path, encoding='euc-kr', usecols=cols)
+        df_raw = pd.read_csv(path, encoding='euc-kr', usecols=cols_raw)
+
     df = df[pd.to_datetime(df['Date.1']) < datetime.today() - timedelta(days=1)]
-    print(repr(df.loc[0, '코멘트']))
-    df['코멘트'] = (
-    df['코멘트']
-    .astype(str)
-    .str.replace('\r\n', '\n', regex=False)
-    .str.replace('\r', '\n', regex=False)
-    )
+    df_raw = df_raw[pd.to_datetime(df_raw['Date']) < datetime.today() - timedelta(days=1)]
 
     composite = df[['Date.1', '국내주식', '해외주식', '채권지수 ', 'FX 지수 ', '크레딧 지수 ', '국내 리스크종합지수.1', '글로벌 리스크종합지수.1']]
     composite.columns = ['Date', 'K_EQUITY', 'G_EQUITY', 'FI', 'FX', 'CREDIT', 'KRCI', 'GRCI']
@@ -278,10 +340,13 @@ def load_and_preprocess_data():
     risk_df = risk_df.sort_values('Date', ascending=False).reset_index(drop=True)
     
     df.rename(columns=rename_dict, inplace=True)
+    df_raw.rename(columns=raw_rename_dict, inplace=True)
 
     econ_df = df.dropna(subset=['국내 리스크종합지수'])
     econ_df['Date'] = pd.to_datetime(econ_df['Date'])
+    df_raw['Date'] = pd.to_datetime(df_raw['Date'])
     econ_df = econ_df.sort_values('Date', ascending=False).reset_index(drop=True)
+    df_raw = df_raw.sort_values('Date', ascending=False).reset_index(drop=True)
     econ_df = econ_df.loc[:, ~econ_df.columns.duplicated()]
     
     for col in risk_df.columns:
@@ -293,7 +358,11 @@ def load_and_preprocess_data():
         if col not in ['Date','코멘트']:
             econ_df[col] = pd.to_numeric(econ_df[col].astype(str).str.strip(), errors='coerce')
 
-    return risk_df, econ_df
+    for col in df_raw.columns:
+        if col not in ['Date']:
+            df_raw[col] = pd.to_numeric(df_raw[col].astype(str).str.strip(), errors='coerce')
+
+    return risk_df, econ_df, df_raw
 
 def get_change_symbol(change):
     change = float(change)
@@ -445,7 +514,7 @@ def main():
     st.title("우체국보험 리스크 스코어보드")
     st.markdown("<div style='text-align: right; color: #909090;'>한국투자증권 리서치본부</div>", unsafe_allow_html=True)
     
-    risk_df, econ_df = load_and_preprocess_data()
+    risk_df, econ_df, raw_df = load_and_preprocess_data()
     available_dates = risk_df['Date'].dt.strftime('%Y-%m-%d').unique()
     default_chart_years = 10
     st.divider()
@@ -476,7 +545,8 @@ def main():
 
         st.markdown("### 데이터(.CSV) 다운로드")
         st.download_button("리스크 지표 DATA", data=bytes_csv(risk_df), file_name=f"risk_index_data_{selected_date.strftime('%Y%m%d')}.csv", mime="text/csv")
-        st.download_button("경제 지표 DATA", data=bytes_csv(econ_df), file_name=f"economic_index_data_{selected_date.strftime('%Y%m%d')}.csv", mime="text/csv")
+        st.download_button("경제 risk DATA", data=bytes_csv(econ_df), file_name=f"economic_index_data_{selected_date.strftime('%Y%m%d')}.csv", mime="text/csv")
+        st.download_button("경제 raw DATA", data=bytes_csv(raw_df), file_name=f"raw_economic_index_data_{selected_date.strftime('%Y%m%d')}.csv", mime="text/csv")
         st.divider()
         st.markdown("<p style='font-size: 10px; color:grey'> · 본 자료는 고객의 증권투자를 돕기 위하여 작성된 당사의 저작물로서 모든 저작권은 당사에게 있으며, 당사의 동의 없이 어떤 형태로든 복제, 배포, 전송, 변형할 수 없습니다.</p>", unsafe_allow_html=True)
         st.markdown("<p style='font-size: 10px; color:grey'> · 본 자료는 리서치센터에서 수집한 자료 및 정보를 기초로 작성된 것이나 당사가 그 자료 및 정보의 정확성이나 완전성을 보장할 수는 없으므로 당사는 본 자료로써 고객의 투자 결과에 대한 어떠한 보장도 행하는 것이 아닙니다. 최종적 투자 결정은 고객의 판단에 기초한 것이며 본 자료는 투자 결과와 관련한 법적 분쟁에서 증거로 사용될 수 없습니다.</p>", unsafe_allow_html=True)
