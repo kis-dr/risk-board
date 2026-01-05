@@ -9,7 +9,7 @@ from hmmlearn.hmm import GaussianHMM
 warnings.filterwarnings("ignore")
 
 st.set_page_config(
-    page_title="우체국보험 리스크 스코어보드",
+    page_title="한국투자증권 리스크 스코어보드",
     page_icon="📊",
     layout="wide"
 )
@@ -511,7 +511,7 @@ def risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, 
 
 def main():
     st.write("")
-    st.title("우체국보험 리스크 스코어보드")
+    st.title("한국투자증권 리스크 스코어보드")
     st.markdown("<div style='text-align: right; color: #909090;'>한국투자증권 리서치본부</div>", unsafe_allow_html=True)
     
     risk_df, econ_df, raw_df = load_and_preprocess_data()
@@ -795,3 +795,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
