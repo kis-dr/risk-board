@@ -574,7 +574,7 @@ def main():
 
     st.subheader("코멘트", divider="grey")
     desc_placeholder = st.empty()
-    desc_placeholder.info(current_econ['코멘트'].replace('\n', '  \n'), icon="📝")
+    desc_placeholder.info(current_econ['코멘트'], icon="📝")
     # desc_placeholder.markdown(f"📝 {current_econ['코멘트'].replace('\n', '  \n')}")
     st.write("")
     st.write("")
@@ -793,4 +793,5 @@ def main():
             st.info("비교할 지표를 하나 이상 선택해주세요.")
 
 if __name__ == "__main__":
+
     main()
