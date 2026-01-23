@@ -426,66 +426,107 @@ def risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, 
     chart_placeholder = st.empty()
     slider_placeholder = st.empty()
 
-    # [State 관리] 현재 선택된 인덱스 (디폴트: 마지막 행)
+    # [State 관리]
     ss_key = f"selected_idx_{name}"
-    
-    # 세션 상태 초기화 (첫 로드 시 마지막 행의 인덱스를 저장)
     if ss_key not in st.session_state:
-        st.session_state[ss_key] = len(df_table) - 1 # 마지막 행 인덱스
+        st.session_state[ss_key] = len(df_table) - 1
 
     current_idx = st.session_state[ss_key]
-
-    # --- [핵심 로직] 선택된 행에 배경색을 입히는 함수 ---
-    def highlight_selected_row(row):
-        # 현재 선택된 인덱스(current_idx)와 이 행의 인덱스(row.name)가 같으면 배경색 적용
-        if row.name == current_idx:
-            return ['background-color: #e6f3ff'] * len(row) # 연한 파란색 배경
-        return [''] * len(row)
-
-    # --- Pandas Styler 적용 ---
-    styled_df = df_table.style.format({
-        "이전": "{:.2f}",
-        "현재": "{:.2f}"
-    }, na_rep="-")\
-    .map(highlight_threshold, subset=["이전", "현재"])\
-    .map(color_change, subset=["변화"])\
-    .apply(highlight_selected_row, axis=1)
-
-    # --- st.dataframe 렌더링 ---
-    # hide_index=True로 설정하여 불필요한 인덱스 열을 숨김
-    event = st.dataframe(
-        styled_df,
-        use_container_width=True,
-        hide_index=True, 
-        on_select="rerun",          # 클릭 시 리런
-        selection_mode="single-row", # 단일 선택
-        key=f"dataframe_{name}"
-    )
-
-    # --- 사용자 클릭 이벤트 처리 ---
-    if len(event.selection.rows) > 0:
-        new_idx = event.selection.rows[0]
-        if new_idx != st.session_state[ss_key]:
-            st.session_state[ss_key] = new_idx
-            st.rerun() # 색상 적용을 위해 리런
-
-    # 인덱스 유효성 체크
+    
     if current_idx >= len(df_table):
         current_idx = len(df_table) - 1
         st.session_state[ss_key] = current_idx
-            
+
+    # --- 1. 데이터 준비 ---
+    display_df = df_table.copy()
+    display_df.insert(0, "선택", False)
+    display_df.at[current_idx, "선택"] = True 
+
+    # --- 2. 스타일링 함수 정의 ---
+
+    # (1) '변화' 열: 텍스트 색상만 변경 (양수 Red, 음수 Blue)
+    def style_change_text(val):
+        s_val = str(val)
+        if "▲" in s_val:
+            return 'color: #D32F2F; font-weight: bold;' # 빨간 글씨
+        elif "▽" in s_val:
+            return 'color: #1976D2; font-weight: bold;' # 파란 글씨
+        return ''
+
+    # (2) '이전', '현재' 열: 값에 따른 배경색 변경 (0.7, 0.8 임계치)
+    def style_value_background(val):
+        try:
+            f_val = float(val)
+        except:
+            return ''
+        
+        # 0.8 이상: 좀 더 진한 붉은색 (Red 100)
+        if f_val >= 0.8:
+            return 'background-color: #ffcdd2; color: black;' 
+        # 0.7 이상: 옅은 붉은색 (Red 50)
+        elif f_val >= 0.7:
+            return 'background-color: #ffebee; color: black;'
+        return ''
+
+    # (3) 행 선택 시 강조 (연한 파란 배경)
+    def highlight_selected_row(row):
+        if row["선택"]:
+            return ['background-color: #e6f3ff'] * len(row)
+        return [''] * len(row)
+
+    # --- 3. Styler 적용 ---
+    styled_df = display_df.style.format({
+        "이전": "{:.2f}",
+        "현재": "{:.2f}"
+    }, na_rep="-")\
+    .map(style_change_text, subset=["변화"])\
+    .map(style_value_background, subset=["이전", "현재"])\
+    .apply(highlight_selected_row, axis=1)
+
+    # --- 4. UI 렌더링 (st.data_editor) ---
+    # 색상이 적용될 열들을 disabled에 포함시켜야 합니다.
+    disabled_cols = [col for col in display_df.columns if col != "선택"]
+
+    edited_df = st.data_editor(
+        styled_df,
+        key=f"editor_{name}",
+        hide_index=True,
+        use_container_width=True,
+        disabled=disabled_cols, # 스타일 적용을 위해 수정 금지 설정
+        column_config={
+            "선택": st.column_config.CheckboxColumn(
+                "Pick",
+                width="small",
+                default=False
+            )
+        }
+    )
+
+    # --- 5. 인터랙션 로직 (라디오 버튼 동작) ---
+    current_checked_indices = edited_df[edited_df["선택"]].index.tolist()
+    
+    if len(current_checked_indices) > 0:
+        new_selection = None
+        for idx in current_checked_indices:
+            if idx != current_idx:
+                new_selection = idx
+                break
+        
+        if new_selection is not None:
+            st.session_state[ss_key] = new_selection
+            st.rerun()
+        elif current_idx not in current_checked_indices:
+             st.rerun()
+    else:
+        st.rerun()
+
+
+    # --- 차트 로직 (동일) ---
     target_col = df_table.iloc[current_idx]["지표"] 
     
-    target_desc = ""
-    target_interpret = ""
-    
     if target_col in tooltip_data:
-        target_desc = tooltip_data[target_col]['desc']
-        target_interpret = tooltip_data[target_col]['interpretation']
-
-    if target_desc:
-        desc_placeholder.info(f"**{target_col}**: {target_desc} \n\n {target_interpret}", icon="ℹ️")
-
+        info = tooltip_data[target_col]
+        desc_placeholder.info(f"**{target_col}**: {info['desc']} \n\n {info['interpretation']}", icon="ℹ️")
 
     if target_col in risk_df.columns:
         chart_base = risk_df
@@ -516,7 +557,6 @@ def risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, 
     ).properties(height=200)
 
     chart_placeholder.altair_chart(chart, use_container_width=True)
-
 def main():
     st.write("")
     st.title("한국투자증권 리스크 스코어보드")
@@ -803,6 +843,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
