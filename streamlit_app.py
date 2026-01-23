@@ -362,8 +362,8 @@ def load_and_preprocess_data():
             return np.nan
         x = str(x).strip()
         if x.startswith('(') and x.endswith(')'):
-            return -int(x[1:-1].replace(',', ''))
-        return int(x.replace(',', ''))
+            return -float(x[1:-1].replace(',', ''))
+        return float(x.replace(',', ''))
     
     for col in df_raw.columns:
         if col not in ['Date']:
@@ -803,5 +803,6 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
