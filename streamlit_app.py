@@ -357,9 +357,17 @@ def load_and_preprocess_data():
     for col in econ_df.columns:
         if col not in ['Date','코멘트']:
             econ_df[col] = pd.to_numeric(econ_df[col].astype(str).str.strip(), errors='coerce')
-
+    def parse_accounting_number(x):
+        if pd.isna(x):
+            return np.nan
+        x = str(x).strip()
+        if x.startswith('(') and x.endswith(')'):
+            return -int(x[1:-1].replace(',', ''))
+        return int(x.replace(',', ''))
+    
     for col in df_raw.columns:
         if col not in ['Date']:
+            df_raw[col] = df_raw[col].apply(parse_accounting_number)
             df_raw[col] = pd.to_numeric(df_raw[col].astype(str).str.strip(), errors='coerce')
 
     return risk_df, econ_df, df_raw
@@ -795,4 +803,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
