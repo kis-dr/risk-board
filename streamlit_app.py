@@ -132,6 +132,121 @@ st.markdown("""
         margin-bottom: -15px;
     }
     
+    /* 표 가로 스크롤 래퍼 (PC에서는 넘치지 않아 스크롤바가 보이지 않음) */
+    .table-scroll {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    /* 툴팁 포커스 아웃라인 제거 (PC 시각 변화 없음) */
+    .tooltip-text:focus { outline: none; }
+
+    /* =========================================================
+       [MOBILE ONLY] 화면 폭 640px 이하에서만 적용됨
+       -> PC(데스크톱) 화면 레이아웃은 그대로 유지됩니다.
+       ========================================================= */
+    @media (max-width: 640px) {
+
+        /* (1) 좌우 여백 축소 : 2rem -> 0.6rem */
+        .block-container {
+            padding-top: 0.5rem !important;
+            padding-left: 0.6rem !important;
+            padding-right: 0.6rem !important;
+            padding-bottom: 1rem !important;
+        }
+
+        /* (2) 2단 컬럼 -> 1단 세로 배치 강제
+               (Streamlit 버전에 따라 testid가 column / stColumn 으로 다름) */
+        div[data-testid="column"],
+        div[data-testid="stColumn"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+        div[data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap !important;
+            gap: 0.75rem !important;
+        }
+
+        /* (3) 타이포그래피 축소 */
+        h1 { font-size: 1.45rem !important; line-height: 1.3 !important; }
+        h2 { font-size: 1.15rem !important; }
+        h3 { font-size: 1.00rem !important; }
+
+        /* (4) 종합지수 헤더 : 좁은 폭에서 줄바꿈 허용 */
+        .rci-header { flex-wrap: wrap; row-gap: 4px; }
+        .rci-header img { height: 24px !important; margin-right: 4px !important; }
+        .rci-header h3 { font-size: 1.00rem !important; }
+        .rci-header .badge-low,
+        .rci-header .badge-mid,
+        .rci-header .badge-high {
+            font-size: 1.0em !important;
+            margin-left: 6px !important;
+        }
+        .rci-prob { font-size: 0.80rem !important; line-height: 1.7; }
+        .chg-row  { font-size: 0.80rem !important; line-height: 1.7; }
+
+        /* (5) 대체투자 표 : 폰트 축소 + 가로 스크롤 */
+        .custom-table {
+            font-size: 11.5px;
+            width: auto;
+            min-width: 100%;
+        }
+        .custom-table th,
+        .custom-table td {
+            padding: 5px 7px;
+            white-space: nowrap;
+        }
+        .custom-table th:first-child,
+        .custom-table td:first-child {
+            white-space: normal;
+            min-width: 120px;
+            position: sticky;
+            left: 0;
+            background: #ffffff;
+            z-index: 2;
+        }
+        .custom-table th:first-child { background: #f0f2f6; }
+
+        /* (6) 컨테이너 내부 여백/간격 축소 */
+        div[data-testid="stVerticalBlockBorderWrapper"] { padding: 0.25rem !important; }
+        div[data-testid="stExpander"] { margin-bottom: 0.25rem; }
+
+        /* (7) 사이드바 폭 : 모바일에서 오버레이로 넓게 */
+        section[data-testid="stSidebar"] {
+            width: 85vw !important;
+            min-width: 85vw !important;
+        }
+
+        /* (8) 슬라이더 : 양끝 라벨이 잘리지 않도록 여백 확보 */
+        div[data-testid="stSlider"] {
+            margin-top: -10px;
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+
+        /* (9) 터치 기기에서는 title 툴팁이 뜨지 않으므로 탭하면 설명 표시 */
+        .tooltip-text { position: relative; display: inline-block; }
+        .tooltip-text:focus::after,
+        .tooltip-text:active::after {
+            content: attr(title);
+            position: absolute;
+            left: 0;
+            top: 125%;
+            z-index: 999;
+            width: 230px;
+            white-space: pre-line;
+            background: #31333F;
+            color: #ffffff;
+            font-size: 11px;
+            line-height: 1.45;
+            padding: 8px 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.28);
+            text-decoration: none;
+        }
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -635,7 +750,7 @@ def main():
         if val in tooltip_data:
             info = tooltip_data[val]
             tooltip_text = f"{info['desc']} &#10;[{info['interpretation']}]"
-            return f'<span title="{tooltip_text}" class="tooltip-text">{val}</span>'
+            return f'<span title="{tooltip_text}" class="tooltip-text" tabindex="0">{val}</span>'
         return val
 
     def RISK_SECTION(name, indicators, categories):
@@ -698,7 +813,7 @@ def main():
             if is_composite:
                 state_label, badge_class, state_desc = state_map.get(current_risk[f"{name}_state"], ("Unknown", "badge-mid", "정보 없음"))
                 st.markdown(f"""
-                    <div style='display: flex; align-items: center; margin-bottom: 10px;'>
+                    <div class='rci-header' style='display: flex; align-items: center; margin-bottom: 10px;'>
                         <img src='{RCI_IMJ_map[name]}' style='height: 32px; margin-right: 6px;'>
                         <h3 style='margin:0; padding:0;'> {RCI_map[name]} : {current_risk[name]:.2f}</h3>
                         <span class='{badge_class}' title='{state_desc}' style='margin-left:10px; font-weight: bold; font-size: 1.6em;'>{state_label}</span>
@@ -706,7 +821,7 @@ def main():
                     """, unsafe_allow_html=True)
                 
                 st.markdown(f"""
-                <div style='margin-bottom: 15px;'>
+                <div class='rci-prob' style='margin-bottom: 15px;'>
                     <span style='color: gray;'>· 국면별 확률 : </span>
                     <span style='color: #2E7D32;'>안정({(current_risk[f'{name}_Low']*100):.2f}%)</span>, 
                     <span style='color: #F9A825;'>중립({(current_risk[f'{name}_Mid']*100):.2f}%)</span>, 
@@ -721,7 +836,7 @@ def main():
             
             if not is_alt:
                 st.markdown(f"""
-                <div style='margin-bottom: 10px; font-size: 0.9em;'>
+                <div class='chg-row' style='margin-bottom: 10px; font-size: 0.9em;'>
                     · 전주대비 : <span style='{wow_color}'>{wow_change}</span> &nbsp;
                     · 전월대비 : <span style='{mom_color}'>{mom_change}</span> &nbsp;
                     · 전년대비 : <span style='{yoy_color}'>{yoy_change}</span>
@@ -749,7 +864,8 @@ def main():
                     .map(color_change, subset=["변화"])\
                     .map(highlight_threshold, subset=["이전", "현재"])
                 
-                st.markdown(styler.hide(axis="index").set_table_attributes('class="custom-table"').to_html(escape=False), unsafe_allow_html=True)
+                table_html = styler.hide(axis="index").set_table_attributes('class="custom-table"').to_html(escape=False)
+                st.markdown(f'<div class="table-scroll">{table_html}</div>', unsafe_allow_html=True)
             else:
                 risk_interaction_area(name, df_table, risk_df, econ_df, min_date, max_date, default_start, default_end)
     st.subheader("종합 리스크지표", divider="grey")
@@ -843,7 +959,3 @@ def main():
 if __name__ == "__main__":
 
     main()
-
-
-
-
